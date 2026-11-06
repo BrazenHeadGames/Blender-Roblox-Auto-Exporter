@@ -31,7 +31,7 @@ You change a model in Blender and press **Save**. Then you click **Push to Roblo
 3. Open the side panel (press **N**, then the **Roblox** tab) and click **Push to Roblox**.
 4. Your assistant picks it up, uploads the changed models, and updates them in Studio. The panel shows "Waiting for the assistant…" and then "Pushed to Roblox".
 
-The panel also has **Export changed models** if you want to export without pushing, and it lists which models are waiting to be pushed.
+The panel also lists which models are waiting to be pushed.
 
 For step 4 to happen on its own, your assistant needs to be watching for the button (see `docs/DETAILS.md`). If it isn't, just tell it "push".
 

@@ -266,9 +266,6 @@ class RBX_PT_panel(bpy.types.Panel):
         col = self.layout.column(align=True)
         col.scale_y = 1.4
         col.operator("rbx.push", text="Push to Roblox", icon='URL')
-        col.scale_y = 1.0
-        col.operator("rbx.export", text="Export changed models", icon='EXPORT').force = False
-        col.operator("rbx.export", text="Re-export everything", icon='FILE_REFRESH').force = True
         pbox = self.layout.box()
         pending = _load_pending(_config())
         if pending:

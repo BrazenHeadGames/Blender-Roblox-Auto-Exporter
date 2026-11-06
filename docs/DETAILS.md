@@ -4,7 +4,7 @@
 
 | File | What it's for |
 |---|---|
-| `rbx_export.py` | Runs inside Blender. Every time you save, it exports the models in your `Export` collection that you changed. Adds a **Roblox** tab in the sidebar (press N) with **Push to Roblox**, **Export changed models** and **Re-export everything** buttons, and shows a message in the status bar after each save. |
+| `rbx_export.py` | Runs inside Blender. Every time you save, it exports the models in your `Export` collection that you changed. Adds a **Roblox** tab in the sidebar (press N) with a **Push to Roblox** button and a list of models waiting to be pushed, and shows a message in the status bar after each save. To force-export every model, use the manual command below with `--force`. |
 | `rbx_watch.ps1` | Watches the export folder so the assistant knows when to upload. Default mode (`-Mode push`) reacts to the **Push to Roblox** button. `-Mode fbx` reacts to every changed FBX instead. |
 | `rbx_swap.luau` | Runs inside Roblox Studio. Replaces the old copies in your game with the new version. |
 | `rbx_assets.template.json` | A list that remembers which model is which Roblox item. Copy it to `rbx_assets.json` and fill it in. |
