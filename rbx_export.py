@@ -31,6 +31,29 @@ _DEFAULTS = {
 # Result of the most recent export, shown in the sidebar panel.
 _last = {"time": None, "written": [], "skipped": [], "errors": [], "dir": ""}
 
+# Push handshake with the assistant (see README): Blender writes REQUEST_FILE into the export
+# folder; the assistant uploads, then writes DONE_FILE, which the panel shows.
+REQUEST_FILE = ".push_request.json"
+DONE_FILE = ".push_done.json"
+_push = {"requested": None, "done": None, "done_mtime": 0.0}
+
+
+def _pending_path(cfg):
+    return cfg["signature_file"] + ".pending.json"
+
+
+def _load_pending(cfg):
+    try:
+        with open(_pending_path(cfg), encoding="utf-8-sig") as f:
+            return list(json.load(f))
+    except Exception:
+        return []
+
+
+def _save_pending(cfg, names):
+    with open(_pending_path(cfg), "w", encoding="utf-8") as f:
+        json.dump(sorted(set(names)), f)
+
 
 def _config():
     path = os.environ.get("RBX_PIPELINE_CONFIG") or os.path.join(
@@ -117,6 +140,8 @@ def export_all(force=False):
             _export(o, cfg, sigs, force, result)
         with open(cfg["signature_file"], "w") as f:
             json.dump(sigs, f, indent=1)
+        if result["written"]:
+            _save_pending(cfg, _load_pending(cfg) + result["written"])
     _last.update(result)
     return result
 
@@ -174,6 +199,62 @@ class RBX_OT_export(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class RBX_OT_push(bpy.types.Operator):
+    """Export changed models, then ask the assistant to upload them to Roblox"""
+    bl_idname = "rbx.push"
+    bl_label = "Push to Roblox"
+
+    def execute(self, context):
+        result = export_all()
+        if result["errors"]:
+            self.report({'ERROR'}, summary(result))
+            _show_status(summary(result))
+            return {'CANCELLED'}
+        cfg = _config()
+        pending = _load_pending(cfg)
+        if not pending:
+            msg = "Nothing to push: no model has changed since the last push."
+            self.report({'INFO'}, msg)
+            _show_status(msg)
+            return {'FINISHED'}
+        with open(os.path.join(cfg["export_dir"], REQUEST_FILE), "w", encoding="utf-8") as f:
+            json.dump({"requested_at": time.time(), "files": pending}, f)
+        _push["requested"] = time.time()
+        msg = f"Push requested for {', '.join(pending)}. Waiting for the assistant."
+        self.report({'INFO'}, msg)
+        _show_status(msg)
+        return {'FINISHED'}
+
+
+def _poll_done():
+    """Timer: pick up the assistant's result file and redraw the panel when it changes."""
+    try:
+        cfg = _config()
+        p = os.path.join(cfg["export_dir"], DONE_FILE)
+        if os.path.exists(p):
+            mt = os.path.getmtime(p)
+            if mt != _push["done_mtime"]:
+                _push["done_mtime"] = mt
+                with open(p, encoding="utf-8-sig") as f:
+                    _push["done"] = json.load(f)
+                if _push["requested"] and mt >= _push["requested"]:
+                    _show_status(_done_text())
+                for win in bpy.context.window_manager.windows:
+                    for area in win.screen.areas:
+                        area.tag_redraw()
+    except Exception:
+        pass
+    return 3.0
+
+
+def _done_text():
+    d = _push["done"] or {}
+    if d.get("errors"):
+        return "Roblox push problem: " + str(d["errors"][0])
+    names = ", ".join(r.get("name", "?") for r in d.get("results", []))
+    return f"Pushed to Roblox: {names or 'nothing'}."
+
+
 class RBX_PT_panel(bpy.types.Panel):
     bl_label = "Roblox Export"
     bl_idname = "RBX_PT_panel"
@@ -183,8 +264,24 @@ class RBX_PT_panel(bpy.types.Panel):
 
     def draw(self, context):
         col = self.layout.column(align=True)
+        col.scale_y = 1.4
+        col.operator("rbx.push", text="Push to Roblox", icon='URL')
+        col.scale_y = 1.0
         col.operator("rbx.export", text="Export changed models", icon='EXPORT').force = False
         col.operator("rbx.export", text="Re-export everything", icon='FILE_REFRESH').force = True
+        pbox = self.layout.box()
+        pending = _load_pending(_config())
+        if pending:
+            pbox.label(text="Waiting to push:")
+            for n in pending:
+                pbox.label(text=n, icon='DOT')
+        else:
+            pbox.label(text="Nothing waiting to push.", icon='CHECKMARK')
+        if _push["requested"] and (not _push["done"] or _push["done_mtime"] < _push["requested"]):
+            pbox.label(text="Push requested. Waiting for", icon='TIME')
+            pbox.label(text="the assistant...")
+        elif _push["done"]:
+            pbox.label(text=_done_text())
         box = self.layout.box()
         if _last["time"] is None:
             box.label(text="No export yet this session.")
@@ -197,13 +294,10 @@ class RBX_PT_panel(bpy.types.Panel):
             box.label(text=f"Unchanged: {len(_last['skipped'])}")
         for err in _last["errors"]:
             box.label(text=err, icon='ERROR')
-        if _last["written"]:
-            box.label(text="Next: push to Roblox.")
-            box.label(text="Studio updates after the push.")
         box.label(text="Folder: " + _last["dir"])
 
 
-_classes = (RBX_OT_export, RBX_PT_panel)
+_classes = (RBX_OT_export, RBX_OT_push, RBX_PT_panel)
 
 
 def register():
@@ -215,6 +309,8 @@ def register():
         bpy.utils.register_class(c)
     if _on_save not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(_on_save)
+    if not bpy.app.timers.is_registered(_poll_done):
+        bpy.app.timers.register(_poll_done, first_interval=3.0, persistent=True)
 
 
 if __name__ == "__main__" and "--run" in sys.argv:

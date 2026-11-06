@@ -8,7 +8,7 @@ Updating a model in Roblox is a pain. Every change means exporting, uploading, a
 
 ## What it does
 
-You change a model in Blender and press **Save**. The tool updates that model in Roblox, and in your game, for you.
+You change a model in Blender and press **Save**. Then you click **Push to Roblox** in Blender's side panel. The tool updates that model in Roblox, and in your game, for you.
 
 ## What you need
 
@@ -27,8 +27,13 @@ You change a model in Blender and press **Save**. The tool updates that model in
 ## Use it
 
 1. Change a model in Blender.
-2. Press **Ctrl+S**.
-3. Ask your assistant to push the change to Roblox.
+2. Press **Ctrl+S**. A message at the bottom of Blender tells you which files were written.
+3. Open the side panel (press **N**, then the **Roblox** tab) and click **Push to Roblox**.
+4. Your assistant picks it up, uploads the changed models, and updates them in Studio. The panel shows "Waiting for the assistant…" and then "Pushed to Roblox".
+
+The panel also has **Export changed models** if you want to export without pushing, and it lists which models are waiting to be pushed.
+
+For step 4 to happen on its own, your assistant needs to be watching for the button (see `docs/DETAILS.md`). If it isn't, just tell it "push".
 
 The first time you send a model, the assistant uploads it and Roblox gives it a number (its asset ID). The tool remembers that number, so later updates go to the same item.
 
