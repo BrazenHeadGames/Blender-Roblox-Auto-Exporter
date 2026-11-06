@@ -37,7 +37,7 @@ def _config():
         os.path.expanduser("~"), ".rbx_pipeline", "config.json")
     cfg = dict(_DEFAULTS)
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8-sig") as f:  # utf-8-sig: tolerate the BOM Windows editors add
             cfg.update(json.load(f))
     except FileNotFoundError:
         pass
