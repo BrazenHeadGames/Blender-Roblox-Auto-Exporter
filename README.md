@@ -1,3 +1,5 @@
+![Blender -> Roblox Auto-Exporter: a Blender scene on the left, the same objects in Roblox Studio on the right](docs/header.webp)
+
 # Blender → Roblox asset loop
 
 Edit in Blender, save, and the objects you changed are re-exported as FBX, uploaded to the
