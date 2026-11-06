@@ -2,12 +2,29 @@
 
 # Blender → Roblox asset loop
 
-Edit in Blender, save, and the objects you changed are re-exported as FBX, uploaded to the
-**same** Roblox asset ID, and swapped into your open Studio place.
+## The problem
 
-What this is: three small scripts plus a convention. It is not a plugin. Uploading and swapping
-are done by an MCP client (e.g. Claude) talking to Studio's built-in MCP server, which holds the
-Open Cloud permission, so **no API key is stored in any file**.
+Getting a model from Blender into Roblox is slow. Every time you tweak a mesh you have to export an
+FBX, open Studio's import window, upload it, and drag the result back into your scene. Each upload can
+also create a brand-new asset, so your scene ends up full of old versions, and the copies you already
+placed don't change when you update the original.
+
+## What this does
+
+Save in Blender and the change shows up in your open Roblox Studio place. Behind the scenes:
+
+- Only the objects you actually changed are exported.
+- Each one is uploaded to the **same** Roblox asset, so you keep a single asset per object instead of piling up duplicates.
+- The copies already placed in your scene are swapped to the new version, keeping their position, rotation and anchoring.
+
+You mark which objects go to Roblox by putting them in one Blender collection called `Export`. Everything else in the scene stays put.
+
+## How it works
+
+It's three small scripts and a naming convention, not a plugin. The upload and swap steps are done by an
+AI assistant or other MCP client (for example Claude) connected to Roblox Studio's built-in MCP server.
+Studio holds the upload permission, so **you never create or store an API key**. Without an MCP client,
+the Blender half still works on its own: it writes up-to-date FBX files you can upload by hand.
 
 Tested on: Blender 5.2.1 LTS, Windows 11, Roblox Studio with the Studio MCP server enabled.
 Not tested elsewhere.
