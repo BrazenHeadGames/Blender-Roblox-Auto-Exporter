@@ -1,0 +1,6 @@
+{
+  "creator": { "userId": "YOUR_USER_ID" },
+  "assets": {
+    "ExampleObjectName": { "assetId": "FILLED_AFTER_FIRST_UPLOAD", "file": "D:/RobloxExports/ExampleObjectName.fbx" }
+  }
+}
