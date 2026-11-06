@@ -13,7 +13,7 @@
 ## How updates work
 
 - **First time:** upload the model's file once (your assistant can do it, or use the [Assets API](https://create.roblox.com/docs/en-us/cloud/guides/usage-assets.md)). Roblox returns an **asset ID**. Write it in `rbx_assets.json` and in the list at the top of `rbx_swap.luau`.
-- **After that:** save in Blender, click **Push to Roblox**, then the assistant sends the new file to the same asset ID and runs `rbx_swap.luau` in Studio.
+- **After that:** save in Blender, click **Push to Roblox**, then the assistant sends the new file to the same asset ID and runs `rbx_swap.luau` in Studio. The swap script waits by itself (up to 45 seconds) until Roblox has finished processing the upload and the new mesh is available, then swaps. When the assistant reports the push as finished, the panel removes those models from the waiting list.
 - **How the button talks to the assistant:** the button writes `.push_request.json` (the list of models waiting to be pushed) into your export folder. `rbx_watch.ps1 -Dir <export folder>`, started by the assistant, notices it. When the assistant finishes, it writes `.push_done.json` with the results, and the Blender panel shows them. The waiting list lives in `<signature file>.pending.json`.
 - **If nothing is watching:** the button still writes the request, and the panel keeps saying "Waiting for the assistant". Tell the assistant "push" and it will read the request.
 - **Limit:** the watcher only runs while your assistant's session is open, and the assistant's watch tool needs to be restarted every 30 minutes (Claude Code's limit).

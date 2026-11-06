@@ -237,6 +237,10 @@ def _poll_done():
                 _push["done_mtime"] = mt
                 with open(p, encoding="utf-8-sig") as f:
                     _push["done"] = json.load(f)
+                # The assistant finished these models: take them off the waiting list.
+                pushed = {r.get("name") for r in _push["done"].get("results", [])}
+                if pushed and not _push["done"].get("errors"):
+                    _save_pending(cfg, [n for n in _load_pending(cfg) if n not in pushed])
                 if _push["requested"] and mt >= _push["requested"]:
                     _show_status(_done_text())
                 for win in bpy.context.window_manager.windows:
