@@ -1,77 +1,97 @@
 ![Blender -> Roblox Auto-Exporter: a Blender scene on the left, the same objects in Roblox Studio on the right](docs/header.webp)
 
-# Blender → Roblox asset loop
+# Blender → Roblox Auto-Exporter
+
+**Save in Blender. See the change in Roblox Studio.**
 
 ## The problem
 
-Getting a model from Blender into Roblox is slow. Every time you tweak a mesh you have to export an
-FBX, open Studio's import window, upload it, and drag the result back into your scene. Each upload can
-also create a brand-new asset, so your scene ends up full of old versions, and the copies you already
-placed don't change when you update the original.
+When you make a 3D model in Blender and want it in Roblox, you have to do the same chores every time you change it:
+
+1. Export the model as a file.
+2. Upload it to Roblox.
+3. Put it back into your game.
+
+If you upload it again, Roblox treats it as a brand new item. Your game fills up with old versions, and the copies you already placed in your game **don't change** when you fix the original.
 
 ## What this does
 
-Save in Blender and the change shows up in your open Roblox Studio place. Behind the scenes:
+You change your model in Blender and press **Save**. The tool does the chores for you:
 
-- Only the objects you actually changed are exported.
-- Each one is uploaded to the **same** Roblox asset, so you keep a single asset per object instead of piling up duplicates.
-- The copies already placed in your scene are swapped to the new version, keeping their position, rotation and anchoring.
+- It exports only the models you actually changed.
+- It updates the **same** Roblox item instead of making a new one each time.
+- It replaces the copies already in your game with the new version, in the same spot, with the same rotation.
 
-You mark which objects go to Roblox by putting them in one Blender collection called `Export`. Everything else in the scene stays put.
+You choose which models go to Roblox by putting them in a Blender collection (a folder in Blender's Outliner list) named `Export`. Everything else in your Blender file is left alone.
 
-## How it works
+## What you need
 
-It's three small scripts and a naming convention, not a plugin. The upload and swap steps are done by an
-AI assistant or other MCP client (for example Claude) connected to Roblox Studio's built-in MCP server.
-Studio holds the upload permission, so **you never create or store an API key**. Without an MCP client,
-the Blender half still works on its own: it writes up-to-date FBX files you can upload by hand.
+- **Blender** (tested on 5.2.1) and **Roblox Studio**. Tested on Windows only.
+- **For the automatic upload:** an AI assistant that can talk to Roblox Studio, such as Claude. Studio has a built-in feature for this called an *MCP server*. It's what lets the assistant upload for you, so **you never have to create or copy a secret password (API key)**.
+- **No assistant?** The Blender part still works by itself. Every time you save, it makes up-to-date model files that you can upload yourself.
 
-Tested on: Blender 5.2.1 LTS, Windows 11, Roblox Studio with the Studio MCP server enabled.
-Not tested elsewhere.
+## What's in the box
 
-## Pieces
+| File | What it's for |
+|---|---|
+| `rbx_export.py` | Runs inside Blender. Every time you save, it exports the models in your `Export` collection that you changed. |
+| `rbx_watch.ps1` | Watches the export folder and says "this file changed", so the assistant knows when to upload. |
+| `rbx_swap.luau` | Runs inside Roblox Studio. Replaces the old copies in your game with the new version. |
+| `rbx_assets.template.json` | A list that remembers which model is which Roblox item. Copy it to `rbx_assets.json` and fill it in. |
+| `config.example.json` | Where your export folder is. Copy it and edit the paths. |
 
-| File | Runs in | Does |
-|---|---|---|
-| `rbx_export.py` | Blender (startup script) | On every save, exports each mesh object in the `Export` collection to `<export_dir>/<ObjectName>.fbx`, only if its geometry, UVs, materials or transform changed. Apply Scaling = FBX Unit Scale. |
-| `rbx_watch.ps1` | PowerShell | Prints `CHANGED <name>.fbx` when an FBX changes, so an MCP client can push it. |
-| `rbx_swap.luau` | Studio (via `execute_luau`) | Reloads tagged models from their asset, keeping position, rotation, anchoring and attributes. Placed copies do **not** update by themselves when an asset gets a new version. |
-| `rbx_assets.template.json` | — | Name → asset ID map. Copy to `rbx_assets.json`. |
+## Setup (about 10 minutes)
 
-## Setup
+**1. Turn on Studio's assistant connection**
+In Roblox Studio, open **Assistant**, click the **…** menu, choose **Manage MCP Servers**, and turn on **Enable Studio as MCP server**. Then connect your assistant. ([Roblox's instructions](https://create.roblox.com/docs/en-us/studio/mcp.md))
 
-1. Studio → Assistant → **…** → Manage MCP Servers → enable *Studio as MCP server*, and connect your client
-   ([docs](https://create.roblox.com/docs/en-us/studio/mcp.md)).
-2. Studio → Assistant Settings → **MCP Permissions**: allow *Publish & manage assets* (`asset:read`, `asset:write`)
-   and add your export folder under *Open Cloud upload directories*.
-3. Copy `config.example.json` to `~/.rbx_pipeline/config.json` and edit the paths (or set `RBX_PIPELINE_CONFIG`).
-4. Copy `rbx_export.py` into Blender's `scripts/startup` folder, e.g.
-   `%APPDATA%\Blender Foundation\Blender\<version>\scripts\startup\`, and **restart Blender**.
-5. In your .blend, make a collection named `Export`. Every mesh object in it (child collections are fine) becomes its own asset.
+**2. Give it permission to upload**
+Open **Assistant Settings → MCP Permissions**.
+- Allow **Publish & manage assets**.
+- Under **Open Cloud upload directories**, add the folder where your model files will go (for example `D:/RobloxExports`). The assistant can only upload files from folders you list here.
 
-## Loop
+**3. Tell the tool where your folder is**
+Copy `config.example.json` to a new file at `~/.rbx_pipeline/config.json` (on Windows, `~` means your user folder, like `C:\Users\YourName`). Open it and change the paths to your own.
 
-1. First time per object: upload its FBX with `POST /assets/v1/assets` and record the returned asset ID in `rbx_assets.json`
-   and in `ASSETS` inside `rbx_swap.luau`.
-2. After that: edit in Blender, Ctrl+S. Then PATCH `/assets/v1/assets/{assetId}` with the new FBX
-   ([Assets API guide](https://create.roblox.com/docs/en-us/cloud/guides/usage-assets.md)) and run `rbx_swap.luau`.
-   An MCP client can do both automatically when `rbx_watch.ps1` reports a change.
-3. To make a model swappable: `CollectionService:AddTag(model, "RBXAsset")` and `model:SetAttribute("rbxAssetId", id)`.
-   `rbx_swap.luau` also auto-tags untagged models named `<Asset>` or `<Asset> <n>`.
+**4. Install the Blender script**
+Copy `rbx_export.py` into Blender's startup scripts folder, for example:
+`%APPDATA%\Blender Foundation\Blender\<your Blender version>\scripts\startup\`
+Then **close and reopen Blender**. Blender only loads startup scripts when it opens.
 
-## Caveats
+**5. Pick which models to send**
+In your Blender file, make a collection named `Export` and put your models inside. You can also make folders inside `Export`. **Every model inside becomes its own Roblox item.**
 
-- Object name = FBX name = asset identity. **Renaming an object makes a new asset.**
-- Uploads are permanent and Open Cloud cannot delete them; every PATCH adds a revision.
-- Content updates via PATCH work for `.fbx` only, 20 MB per call; the endpoints are beta.
-- A placed MeshPart keeps pointing at the mesh version it was inserted with; that is why the swap step exists.
-- Check Roblox's per-mesh triangle limits before uploading
-  ([specs](https://create.roblox.com/docs/art/modeling/specifications.md)).
-- Stale FBX files are never deleted when you delete an object.
-- The unofficial Blender MCP, if you add one, runs LLM-generated code in Blender with no guards: back up your .blend files.
+## How to use it
 
-## Manual export
+**The first time you send a model:**
+Upload its file once. (Ask your assistant to do it, or upload it yourself with the [Assets API](https://create.roblox.com/docs/en-us/cloud/guides/usage-assets.md).) Roblox gives you an **asset ID**, which is just the item's number. Write it down in `rbx_assets.json` and in the list at the top of `rbx_swap.luau`.
+
+**Every time after that:**
+1. Change your model in Blender.
+2. Press **Ctrl+S**. The changed models are exported.
+3. Your assistant sends the new file to the **same** Roblox item and runs `rbx_swap.luau`. If you use `rbx_watch.ps1`, the assistant can do this on its own when a file changes.
+
+**To make a model in your game "swappable":**
+Models that you dragged in with the item's name are found automatically. For anything else, add a tag called `RBXAsset` and a number attribute `rbxAssetId` (set to the asset ID).
+
+## Things to know
+
+- **A model's name in Blender is its identity.** If you rename it, Roblox sees a new model and makes a new item.
+- **Uploads can't be undone.** Roblox doesn't let this tool delete items or old versions, and every update adds a version.
+- **Only `.fbx` files can be updated** (up to 20 MB). These Roblox upload features are still in beta, so they may change.
+- **Old copies don't update on their own.** A model already in your game keeps pointing at the version it was made from. That's why the swap step exists.
+- **Check Roblox's size limits** for how many triangles one mesh can have before you upload ([limits](https://create.roblox.com/docs/art/modeling/specifications.md)).
+- **Deleting a model in Blender doesn't delete its exported file.** You'd clean those up yourself.
+- **Back up your Blender files.** If you also connect an AI assistant to Blender itself (the Blender Lab MCP add-on), it can run code inside Blender without any safety checks.
+
+## Running the export by hand
+
+You normally don't need this, because saving does it. To export from a command line instead, run this (add `--force` to export everything, even unchanged models):
 
 ```
-blender -b file.blend --python rbx_export.py -- --run [--force]
+blender -b file.blend --python rbx_export.py -- --run
 ```
+
+## License
+
+MIT. See `LICENSE`.
