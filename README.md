@@ -4,6 +4,8 @@
 
 **Save in Blender. See the change in Roblox Studio.**
 
+**[Watch the demo on YouTube](https://youtube.com/live/iQURFMpOpbY)**
+
 Updating a model in Roblox is a pain. Every change means exporting, uploading, and putting it back in your game by hand. And the copies already in your game don't update.
 
 ## What it does
